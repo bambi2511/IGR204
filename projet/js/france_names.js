@@ -1,4 +1,4 @@
-const w = 800;
+const w = 1600;
 const h = 800;
 var dataset = [];
 size = Math.max(w, h);
@@ -35,31 +35,52 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
     .interpolate(d3.interpolateHcl);
 
 
-  var circles = d3.packSiblings(dataset.filter(function(d) {
-    return d.annais.getFullYear() == 1979;
-  }))
-  //  .filter(function(d) {
-  //    return -500 < d.x && d.x < 500 && -500 < d.y && d.y < 500;
-  //  });
-  //displayBubbles();
+  var circles = d3.packSiblings(dataset.filter(
+    function(d) {
+      return d.annais.getFullYear() == 2000;
+    }));
+  //.filter(function(d) {
+  //  return -500 < d.x && d.x < 500 && -500 < d.y && d.y < 500;
+  //})
 
-  var bubbles = svgContainer.append("g")
+  var groupBubbles = svgContainer.append("g")
     .selectAll("circle")
     .data(circles)
-    .enter().append("circle")
+    .enter()
+    .append("g")
+    .attr("transform", "translate(800,400)")
+
+  var bubbles = groupBubbles.append("circle")
     .style("fill", function(d) {
       return color(d.angle = Math.atan2(d.y, d.x));
     })
     .attr("cx", function(d) {
-      return Math.cos(d.angle) * (size / Math.SQRT2 + 30);
+      return Math.cos(d.angle) * (w / Math.SQRT2 + 30);
     })
     .attr("cy", function(d) {
-      return Math.sin(d.angle) * (size / Math.SQRT2 + 30);
+      return Math.sin(d.angle) * (h / Math.SQRT2 + 30);
     })
     .attr("r", function(d) {
       return d.r - 0.25;
     })
-    .transition()
+  //.attr("fill", "blue")
+
+
+  //title
+  groupBubbles.append("title")
+    //  .attr("text-anchor", "middle")
+    .text(function(d) {
+      return d.preusuel;
+    })
+
+  groupBubbles.append("text")
+        .attr("dy", ".3em")
+        .style("text-anchor", "middle")
+    .text(function(d) {
+      return d.preusuel;
+    });
+
+  bubbles.transition()
     .ease(d3.easeCubicOut)
     .delay(function(d) {
       return Math.sqrt(d.x * d.x + d.y * d.y) * 10;
@@ -72,6 +93,8 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
       return d.y;
     });
 });
+
+
 
 //  var bubbles = svgContainer.append("g")
 //    .attr("transform", "translate(0,0)")
