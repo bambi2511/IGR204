@@ -90,10 +90,10 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
     //  .range([0.1, radius]);
 
     var node = svgContainer
-      .selectAll("g.node")
-      .data(circles);
+      .selectAll("g")
+      .data(circles, function(d) { return d.preusuel; });
 
-    node.exit().remove();
+    var groupBubbles = node.exit().remove();
 
     var groupBubbles = node
       .enter()
