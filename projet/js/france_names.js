@@ -1,7 +1,7 @@
-const w = 1600;
+const w = 800;
 const h = 800;
 var dataset = [];
-size = Math.max(w, h);
+var dataGrp = {}
 
 var svgContainer = d3.select("body")
   .append("svg")
@@ -14,8 +14,10 @@ var rowNatConverter = function(d) {
   return {
     sexe: parseFloat(d.sexe),
     preusuel: d.preusuel,
-    annais: new Date(+d.annais, 0, 1),
-    r: parseFloat(d.nombre) / 100
+    // annais: new Date(+d.annais, 0, 1),
+    annais: +d.annais,
+    nombre: parseFloat(d.nombre),
+    r: (parseFloat(d.nombre))
   };
 }
 
@@ -29,6 +31,33 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
 
   dataset = data;
 
+  //get population per year
+
+    var tmpDataGrp = d3.nest()
+      .key(function(d) {
+        return d.annais;
+      })
+      .rollup(function(d) {
+        // sum up population for each year
+        var sumPop = d3.sum(d, function(g) {
+          return g.r;
+        });
+        // sum of the circles use the same area as a square (notwithstanding space loss)
+        return Math.sqrt((w * h) / (Math.PI * sumPop));
+
+      }).entries(data);
+
+  //dictionary
+  for (var i = 0; i < tmpDataGrp.length; i++) {
+    dataGrp[tmpDataGrp[i].key] = tmpDataGrp[i].value;
+  }
+
+  //rescale radius
+  for (var i = 0; i < data.length; i++) {
+    data[i].r = dataGrp[data[i].annais] * Math.sqrt(data[i].r);
+  }
+
+
   var color = d3.scaleLinear()
     .domain([15, 35, 132])
     .range(["#d7191c", "#ffffbf", "#2c7bb6"])
@@ -37,18 +66,23 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
 
   var circles = d3.packSiblings(dataset.filter(
     function(d) {
-      return d.annais.getFullYear() == 2000;
+      return d.annais == 1900;
     }));
+
+
   //.filter(function(d) {
   //  return -500 < d.x && d.x < 500 && -500 < d.y && d.y < 500;
   //})
+  //var scaleRadius = d3.scaleSqrt()
+  //  .domain([0, max_population])
+  //  .range([0.1, radius]);
 
   var groupBubbles = svgContainer.append("g")
     .selectAll("circle")
     .data(circles)
     .enter()
     .append("g")
-    .attr("transform", "translate(800,400)")
+    .attr("transform", "translate(400,400)")
 
   var bubbles = groupBubbles.append("circle")
     .style("fill", function(d) {
@@ -60,8 +94,10 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
     .attr("cy", function(d) {
       return Math.sin(d.angle) * (h / Math.SQRT2 + 30);
     })
+    //.attr("r", function(d) {
+    //  return d.r - 0.25;
     .attr("r", function(d) {
-      return d.r - 0.25;
+      return d.r - 0.25
     })
   //.attr("fill", "blue")
 
@@ -74,8 +110,8 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
     })
 
   groupBubbles.append("text")
-        .attr("dy", ".3em")
-        .style("text-anchor", "middle")
+    .attr("dy", ".3em")
+    .style("text-anchor", "middle")
     .text(function(d) {
       return d.preusuel;
     });
