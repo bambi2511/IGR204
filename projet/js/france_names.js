@@ -42,8 +42,9 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
       var sumPop = d3.sum(d, function(g) {
         return g.r;
       });
-      // sum of the circles use the same area as a square (notwithstanding space loss)
-      return Math.sqrt((w * h) / (Math.PI * sumPop));
+      // sum of the circles use the same area as a square
+      // space loss: tuned at 0.8
+      return 0.8 * Math.sqrt((w * h) / (Math.PI * sumPop));
 
     }).entries(data);
 
@@ -68,7 +69,7 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
 
 
   d3.select("body").append("button")
-    .text("change date")
+    .text(year)
     .on("click", function() {
       //select new data
       year += 1;
@@ -91,15 +92,26 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
 
     var node = svgContainer
       .selectAll("g")
-      .data(circles, function(d) { return d.preusuel; });
+      .data(circles, function(d) {
+        return d.preusuel;
+      });
 
-    var groupBubbles = node.exit().remove();
-
+    var groupBubbles = node.exit()
+    .remove()
+    .transition().duration(1000)
+    .attr("r", 0);
+    
     var groupBubbles = node
       .enter()
       .append("g")
       .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")")
 
+    //var groupBubbles = node
+    //  .update()
+    //  .append("g")
+    //  .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")")
+
+    // only for new circles
     var bubbles = groupBubbles.append("circle")
       .style("fill", function(d) {
         return color(d.angle = Math.atan2(d.y, d.x));
@@ -115,7 +127,18 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
       .attr("r", function(d) {
         return d.r //- 0.25
       })
-    //.attr("fill", "blue")
+      .transition()
+      .ease(d3.easeCubicOut)
+      .delay(function(d) {
+        return Math.sqrt(d.x * d.x + d.y * d.y) * 10;
+      })
+      .duration(1000)
+      .attr("cx", function(d) {
+        return d.x;
+      })
+      .attr("cy", function(d) {
+        return d.y;
+      });
 
 
     //title
@@ -149,17 +172,30 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
         return d.preusuel;
       });
 
-    bubbles.transition()
-      .ease(d3.easeCubicOut)
-      .delay(function(d) {
-        return Math.sqrt(d.x * d.x + d.y * d.y) * 10;
+
+    node.select("circle")
+      .transition().duration(1000)
+      .attr("r", function(d) {
+        return d.r;
       })
-      .duration(1000)
       .attr("cx", function(d) {
         return d.x;
       })
       .attr("cy", function(d) {
         return d.y;
+      });
+
+    node.select("text")
+      .transition().duration(1000)
+      .attr("x", function(d) {
+        return d.x;
+      })
+      .attr("y", function(d) {
+        return d.y;
+      })
+      .style("font-size", function(d) {
+        // quick and dirty : to refactor
+        return Math.round(d.r / 3) + 'px';
       });
   }
 });
