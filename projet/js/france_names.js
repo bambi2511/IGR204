@@ -3,6 +3,8 @@ const h = 800;
 var dataset = [];
 var dataGrp = {};
 var transitionDuration = 1000;
+var year = 1900;
+var fileNational = "data/nat2016.txt";
 
 var svgContainer = d3.select("body")
   .append("svg")
@@ -23,7 +25,7 @@ var rowNatConverter = function(d) {
 }
 
 // import data and calculate appropriate circle scale
-d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
+d3.tsv(fileNational, rowNatConverter, function(error, data) {
   if (error) {
     console.log(error);
   } else {
@@ -57,6 +59,8 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
   for (var i = 0; i < data.length; i++) {
     data[i].r = dataGrp[data[i].annais] * Math.sqrt(data[i].r);
   }
+  // initialize rendering
+  drawBubble(1900);
 });
 
 var color = d3.scaleLinear()
@@ -64,8 +68,6 @@ var color = d3.scaleLinear()
   .range(["#d7191c", "#ffffbf", "#2c7bb6"])
   .interpolate(d3.interpolateHcl);
 
-year = 1900;
-drawBubble(year);
 
 d3.select("body").append("button")
   .text(year)
@@ -118,10 +120,14 @@ function drawBubble(year) {
     });
 
   // remove a bubble
-  node.exit()
-    .transition().duration(transitionDuration)
-    .attr("r", 0)
-    .remove();
+  //node.exit()
+  //  .transition().duration(transitionDuration)
+  //  .attr("r", 0)
+  //  .remove();
+
+  node.exit().selectAll("text").transition().delay(transitionDuration).remove();
+  node.exit().selectAll("circle").transition().duration(transitionDuration).attr("r", 0);
+  node.exit().transition().delay(transitionDuration).remove();
 
   // update a bubble
   node.select("circle")
