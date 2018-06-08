@@ -77,14 +77,6 @@ d3.select("body").append("button")
     drawBubble(year);
   });
 
-//var force = d3.layout.force()
-//  .nodes(dataset)
-//  .size([w, h])
-//  .gravity(0)
-//  .charge(0)
-//  .on("tick", tick)
-//  .start();
-
 //function tick(e) {
 //  force.alpha(0.1)
 
@@ -120,11 +112,6 @@ function drawBubble(year) {
     });
 
   // remove a bubble
-  //node.exit()
-  //  .transition().duration(transitionDuration)
-  //  .attr("r", 0)
-  //  .remove();
-
   node.exit().selectAll("text").transition().delay(transitionDuration).remove();
   node.exit().selectAll("circle").transition().duration(transitionDuration).attr("r", 0);
   node.exit().transition().delay(transitionDuration).remove();
@@ -141,8 +128,7 @@ function drawBubble(year) {
     .attr("cy", function(d) {
       return d.y;
     })
-  //.call(force.drag)
-  ;
+    //.call(force.drag);
 
   node.select("text")
     .transition().duration(transitionDuration)
