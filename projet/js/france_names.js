@@ -1,7 +1,8 @@
 const w = 800;
 const h = 800;
 var dataset = [];
-var dataGrp = {}
+var dataGrp = {};
+var transitionDuration = 1000;
 
 var svgContainer = d3.select("body")
   .append("svg")
@@ -21,7 +22,7 @@ var rowNatConverter = function(d) {
   };
 }
 
-// import data
+// import data and calculate appropriate circle scale
 d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
   if (error) {
     console.log(error);
@@ -43,9 +44,8 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
         return g.r;
       });
       // sum of the circles use the same area as a square
-      // space loss: tuned at 0.8
+      // dirty: space loss: tuned at 0.8
       return 0.8 * Math.sqrt((w * h) / (Math.PI * sumPop));
-
     }).entries(data);
 
   //dictionary
@@ -57,144 +57,168 @@ d3.tsv("data/nat2016.txt", rowNatConverter, function(error, data) {
   for (var i = 0; i < data.length; i++) {
     data[i].r = dataGrp[data[i].annais] * Math.sqrt(data[i].r);
   }
+});
+
+var color = d3.scaleLinear()
+  .domain([15, 35, 132])
+  .range(["#d7191c", "#ffffbf", "#2c7bb6"])
+  .interpolate(d3.interpolateHcl);
+
+year = 1900;
+drawBubble(year);
+
+d3.select("body").append("button")
+  .text(year)
+  .on("click", function() {
+    //select new data
+    year += 1;
+    drawBubble(year);
+  });
+
+//var force = d3.layout.force()
+//  .nodes(dataset)
+//  .size([w, h])
+//  .gravity(0)
+//  .charge(0)
+//  .on("tick", tick)
+//  .start();
+
+//function tick(e) {
+//  force.alpha(0.1)
+
+//  circle
+//    .each(gravity(e.alpha))
+//    .each(collide(.5))
+//    .attr("cx", function(d) {
+//      return d.x;
+//    })
+//    .attr("cy", function(d) {
+//      return d.y;
+//    });
+//}
+
+function drawBubble(year) {
+  var circles = d3.packSiblings(dataset.filter(
+    function(d) {
+      return d.annais == year;
+    }));
 
 
-  var color = d3.scaleLinear()
-    .domain([15, 35, 132])
-    .range(["#d7191c", "#ffffbf", "#2c7bb6"])
-    .interpolate(d3.interpolateHcl);
+  //.filter(function(d) {
+  //  return -500 < d.x && d.x < 500 && -500 < d.y && d.y < 500;
+  //})
+  //var scaleRadius = d3.scaleSqrt()
+  //  .domain([0, max_population])
+  //  .range([0.1, radius]);
 
-  year = 1900;
-  drawBubble(year);
-
-
-  d3.select("body").append("button")
-    .text(year)
-    .on("click", function() {
-      //select new data
-      year += 1;
-      drawBubble(year);
+  var node = svgContainer
+    .selectAll("g")
+    .data(circles, function(d) {
+      return d.preusuel;
     });
 
-  function drawBubble(year) {
-    var circles = d3.packSiblings(dataset.filter(
-      function(d) {
-        return d.annais == year;
-      }));
+  // remove a bubble
+  node.exit()
+    .transition().duration(transitionDuration)
+    .attr("r", 0)
+    .remove();
+
+  // update a bubble
+  node.select("circle")
+    .transition().duration(transitionDuration)
+    .attr("r", function(d) {
+      return d.r;
+    })
+    .attr("cx", function(d) {
+      return d.x;
+    })
+    .attr("cy", function(d) {
+      return d.y;
+    })
+  //.call(force.drag)
+  ;
+
+  node.select("text")
+    .transition().duration(transitionDuration)
+    .attr("x", function(d) {
+      return d.x;
+    })
+    .attr("y", function(d) {
+      return d.y;
+    })
+    .style("font-size", function(d) {
+      // quick and dirty : to refactor
+      return Math.round(d.r / 3) + 'px';
+    });
+
+  // add a new bubble (none if modified)
+  var groupBubbles = node
+    .enter()
+    .append("g")
+    .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")")
 
 
-    //.filter(function(d) {
-    //  return -500 < d.x && d.x < 500 && -500 < d.y && d.y < 500;
-    //})
-    //var scaleRadius = d3.scaleSqrt()
-    //  .domain([0, max_population])
-    //  .range([0.1, radius]);
+  // only for new circles
+  groupBubbles.append("circle")
+    .style("fill", function(d) {
+      return color(d.angle = Math.atan2(d.y, d.x));
+    })
+    .attr("cx", function(d) {
+      return Math.cos(d.angle) * (w / Math.SQRT2 + 30);
+    })
+    .attr("cy", function(d) {
+      return Math.sin(d.angle) * (h / Math.SQRT2 + 30);
+    })
+    .attr("r", function(d) {
+      return d.r //- 0.25
+    })
+    .transition()
+    .ease(d3.easeCubicOut)
+    .delay(function(d) {
+      return Math.sqrt(d.x * d.x + d.y * d.y) * 10;
+    })
+    .duration(transitionDuration)
+    .attr("cx", function(d) {
+      return d.x;
+    })
+    .attr("cy", function(d) {
+      return d.y;
+    })
+  //.call(force.drag)
+  ;
 
-    var node = svgContainer
-      .selectAll("g")
-      .data(circles, function(d) {
-        return d.preusuel;
-      });
+  //title
+  groupBubbles.append("title")
+    .text(function(d) {
+      return d.preusuel + " : " + d.nombre;
+    })
 
-    // remove a bubble
-    node.exit()
-      .transition().duration(1000)
-      .attr("r", 0)
-      .remove();
+  groupBubbles.append("text")
+    .attr("x", function(d) {
+      return Math.cos(d.angle) * (w / Math.SQRT2 + 30);
+    })
+    .attr("y", function(d) {
+      return Math.sin(d.angle) * (h / Math.SQRT2 + 30);
+    })
+    .style("text-anchor", "middle")
+    .style("font-size", function(d) {
+      // quick and dirty : to refactor
+      return Math.round(d.r / 3) + 'px';
+    })
+    .text(function(d) {
+      return d.preusuel;
+    })
+    .transition()
+    .ease(d3.easeCubicOut)
+    .delay(function(d) {
+      return Math.sqrt(d.x * d.x + d.y * d.y) * 10;
+    })
+    .duration(transitionDuration)
+    .attr("x", function(d) {
+      return d.x;
+    })
+    .attr("y", function(d) {
+      return d.y;
+    });
 
-    // update a bubble
-    node.select("circle")
-      .transition().duration(1000)
-      .attr("r", function(d) {
-        return d.r;
-      })
-      .attr("cx", function(d) {
-        return d.x;
-      })
-      .attr("cy", function(d) {
-        return d.y;
-      });
-
-    node.select("text")
-      .transition().duration(1000)
-      .attr("x", function(d) {
-        return d.x;
-      })
-      .attr("y", function(d) {
-        return d.y;
-      })
-      .style("font-size", function(d) {
-        // quick and dirty : to refactor
-        return Math.round(d.r / 3) + 'px';
-      });
-
-    // add a new bubble (none if modified)
-    var groupBubbles = node
-      .enter()
-      .append("g")
-      .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")")
-
-
-    // only for new circles
-    groupBubbles.append("circle")
-      .style("fill", function(d) {
-        return color(d.angle = Math.atan2(d.y, d.x));
-      })
-      .attr("cx", function(d) {
-        return Math.cos(d.angle) * (w / Math.SQRT2 + 30);
-      })
-      .attr("cy", function(d) {
-        return Math.sin(d.angle) * (h / Math.SQRT2 + 30);
-      })
-      .attr("r", function(d) {
-        return d.r //- 0.25
-      })
-      .transition()
-      .ease(d3.easeCubicOut)
-      .delay(function(d) {
-        return Math.sqrt(d.x * d.x + d.y * d.y) * 10;
-      })
-      .duration(1000)
-      .attr("cx", function(d) {
-        return d.x;
-      })
-      .attr("cy", function(d) {
-        return d.y;
-      });
-
-    //title
-    groupBubbles.append("title")
-      .text(function(d) {
-        return d.preusuel + " : " + d.nombre;
-      })
-
-    groupBubbles.append("text")
-      .attr("x", function(d) {
-        return Math.cos(d.angle) * (w / Math.SQRT2 + 30);
-      })
-      .attr("y", function(d) {
-        return Math.sin(d.angle) * (h / Math.SQRT2 + 30);
-      })
-      .style("text-anchor", "middle")
-      .style("font-size", function(d) {
-        // quick and dirty : to refactor
-        return Math.round(d.r / 3) + 'px';
-      })
-      .text(function(d) {
-        return d.preusuel;
-      })
-      .transition()
-      .ease(d3.easeCubicOut)
-      .delay(function(d) {
-        return Math.sqrt(d.x * d.x + d.y * d.y) * 10;
-      })
-      .duration(1000)
-      .attr("x", function(d) {
-        return d.x;
-      })
-      .attr("y", function(d) {
-        return d.y;
-      });
-
-  }
-});
+}
