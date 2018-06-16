@@ -4,13 +4,17 @@ var dataset = [];
 var dataGrp = {};
 var transitionDuration = 1000;
 var year = 1900;
-var fileNational = "data/nat2016.txt";
+var fileNational = "data/nat2016m.txt";
 
 var svgContainer = d3.select("body")
   .append("svg")
   .attr("width", w)
-  .attr("height", h)
+  .attr("height", h);
 //  .attr("class", "bubble");
+
+var bubbleChart = svgContainer
+  .append("g")
+  .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")");
 
 // convert data
 var rowNatConverter = function(d) {
@@ -45,7 +49,8 @@ d3.tsv(fileNational, rowNatConverter, function(error, data) {
       var sumPop = d3.sum(d, function(g) {
         return g.r;
       });
-      // sum of the circles use the same area as a square
+      // sum of the circles use the same area as a rectangle
+      // computes the coefficient applied to sqrt(pop)
       // dirty: space loss: tuned at 0.8
       return 0.8 * Math.sqrt((w * h) / (Math.PI * sumPop));
     }).entries(data);
@@ -68,7 +73,6 @@ var color = d3.scaleLinear()
   .range(["#d7191c", "#ffffbf", "#2c7bb6"])
   .interpolate(d3.interpolateHcl);
 
-
 d3.select("body").append("button")
   .text(year)
   .on("click", function() {
@@ -77,38 +81,16 @@ d3.select("body").append("button")
     drawBubble(year);
   });
 
-//function tick(e) {
-//  force.alpha(0.1)
-
-//  circle
-//    .each(gravity(e.alpha))
-//    .each(collide(.5))
-//    .attr("cx", function(d) {
-//      return d.x;
-//    })
-//    .attr("cy", function(d) {
-//      return d.y;
-//    });
-//}
-
 function drawBubble(year) {
   var circles = d3.packSiblings(dataset.filter(
     function(d) {
       return d.annais == year;
     }));
 
-
-  //.filter(function(d) {
-  //  return -500 < d.x && d.x < 500 && -500 < d.y && d.y < 500;
-  //})
-  //var scaleRadius = d3.scaleSqrt()
-  //  .domain([0, max_population])
-  //  .range([0.1, radius]);
-
-  var node = svgContainer
+  var node = bubbleChart
     .selectAll("g")
     .data(circles, function(d) {
-      return d.preusuel;
+      return d.sexe + d.preusuel;
     });
 
   // remove a bubble
@@ -128,10 +110,17 @@ function drawBubble(year) {
     .attr("cy", function(d) {
       return d.y;
     })
-    //.call(force.drag);
+  //.call(force.drag);
+
+  //title
+  node.select("title")
+    .text(function(d) {
+      return d.preusuel + " : " + d.nombre;
+    })
 
   node.select("text")
     .transition().duration(transitionDuration)
+    .attr("class", "update")
     .attr("x", function(d) {
       return d.x;
     })
@@ -147,7 +136,6 @@ function drawBubble(year) {
   var groupBubbles = node
     .enter()
     .append("g")
-    .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")")
 
 
   // only for new circles
@@ -192,6 +180,7 @@ function drawBubble(year) {
     .attr("y", function(d) {
       return Math.sin(d.angle) * (h / Math.SQRT2 + 30);
     })
+    .attr("class", "enter")
     .style("text-anchor", "middle")
     .style("font-size", function(d) {
       // quick and dirty : to refactor
